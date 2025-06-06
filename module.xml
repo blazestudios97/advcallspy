@@ -1,0 +1,67 @@
+
+<module>
+  <rawname>advcallspy</rawname>
+  <name>Advanced Call Spy</name>
+  <version>17.0.1.2</version>
+  <publisher>Applied Messaging, Inc.</publisher>
+  <license>GPLv3+</license>
+  <changelog>
+    *17.0.1.2* Alpha Testing
+    *17.0.1.1* Initial release
+  </changelog>
+  <category>Applications</category>
+  <description>Advanced Call Spying</description>
+  <info></info>
+  <menuitems>
+    <advcallspy>Advanced Call Spy</advcallspy>
+    <spygroups hidden="true">Advanced Call Spy Groups</spygroups>
+  </menuitems>
+  <database>
+    <table name="advcallspy_details">
+        <field name="spycode" type="string" length="20"/>
+        <field name="description" type="string" length="35" notnull="false"/>
+        <field name="spytype" type="string" length="10" notnull="false"/>
+        <field name="status" type="string" length="10" default="disabled" notnull="false"/>
+        <field name="passcode" type="string" length="40" notnull="false"/>
+        <field name="recording" type="string" length="5" notnull="false"/>
+        <field name="cycledtmf" type="string" length="1" notnull="false"/>
+        <field name="exitdtmf" type="string" length="1" notnull="false"/>
+        <field name="modedtmf" type="string" length="1" notnull="false"/>
+        <field name="bridged" type="integer" notnull="false"/>
+        <field name="qmode" type="string" length="1" notnull="false"/>
+        <field name="whisper" type="string" length="1" notnull="false"/>
+        <field name="barge" type="string" length="1" notnull="false"/>
+        <field name="listen" type="string" length="1" notnull="false"/>
+        <field name="sayname" type="string" length="1" notnull="false"/>
+        <field name="skip" type="string" length="1" notnull="false"/>
+        <field name="stopspy" type="string" length="1" notnull="false"/>
+        <field name="exithangup" type="string" length="1" notnull="false"/>
+        <field name="exitivr" type="string" length="1" notnull="false"/>
+        <field name="eventlog" type="integer" notnull="false"/>
+        <field name="genhint" type="integer" notnull="false"/>
+        <field name="restricted" type="string" length="1024" notnull="false"/>
+        <field name="enforcelist" type="string" length="255" notnull="false"/>
+        <field name="spygroups" type="string" length="255" notnull="false"/>
+        <key name="spycode" type="unique">
+            <column name="spycode"/>
+        </key>
+    </table>
+    <table name="advcallspy_groups">
+        <field name="spygroup" type="string" length="20"/>
+        <field name="description" type="string" length="40" notnull="false"/>
+        <key name="uniq_spygroup" type="unique">
+            <column name="spygroup"/>
+            <column name="description"/>
+        </key>
+    </table>
+    <table name="advcallspy_group_extens">
+        <field name="spygroup" type="string" length="20"/>
+        <field name="exten" type="string" length="40" notnull="false"/>
+        <key name="uniq_member" type="unique">
+            <column name="spygroup"/>
+            <column name="exten"/>
+        </key>
+    </table>
+  </database>
+  <supported>17.0</supported>
+</module>
