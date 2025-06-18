@@ -43,8 +43,10 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             'spycode' => 555,
             'description' => 'Default Spy Code',
             'spytype' => 'ChanSpy',
+            'directspy' => 'no',
             'status' => 'disabled',
             'passcode' => '',
+            'pinset' => 0,
             'recording' => 'no',
             'cycledtmf' => '',
             'exitdtmf' => '',
@@ -60,7 +62,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             'exithangup' => '',
             'eventlog' => 0,
             'genhint' => 0,
-            'restricted' => '',
+            'spiers' => '',
             'enforcelist' => '',
             'spygroups' => ''
         ];
@@ -285,7 +287,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
 	}
     /**
      * List All Groups
-     * get an list of all spy groups
+     * get a list of all spy groups for table display
      * 
      * @return array $all_groups an multidimensional array of of spy groups
      */
@@ -299,8 +301,6 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $all_groups = [];
         if(!empty($groups)) {
             foreach($groups as $grp) {
-                $new['spygroup'] = $grp['spygroup'];
-                $new['description'] = $grp['description'];
                 $all_groups[] = $grp;
             }
         }
@@ -328,20 +328,24 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         }
 		$stmt = $this->FreePBX->Database->prepare($sql);
 		$stmt->execute();
-		$codes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+		$extens = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        $all_codes = [];
-        if(!empty($codes)) {
-            foreach($codes as $code) {
-                $new[] = $code['exten'];
-                $all_codes[] = $code['exten'];
+        $all_extens = [];
+        if(!empty($extens)) {
+            foreach($extens as $exten) {
+                $all_extens[] = $exten['exten'];
             }
         }
-        return $all_codes;
+        return $all_extens;
 	}
-    public function listAllExtenGroups(){
+    /**
+     * List All Exten Groups
+     * lists all extensions with their associated groups
+     * 
+     */
+    public function listAllExtenGroups()
+    {
 		$sql = "SELECT * FROM advcallspy_group_extens";
-        
 		$stmt = $this->FreePBX->Database->prepare($sql);
 		$stmt->execute();
 		$codes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -357,7 +361,12 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         //sort($all_codes);
         return $all_codes;
 	}
-    public function listExtenGroups($exten){
+    /**
+     * List Exten Groups
+     * lists all the groups an extension belongs to
+     */
+    public function listExtenGroups($exten)
+    {
 		$sql = "SELECT spygroup FROM advcallspy_group_extens WHERE exten='{$exten}'";
        
 		$stmt = $this->FreePBX->Database->prepare($sql);
@@ -425,11 +434,11 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
      */
     public function setSpycode($vars)
     {
-        $restricted = '';
+        $spiers = '';
         $enforcelist = '';
         $spygroups = '';
-        if (!empty($vars['restricted'])) {
-            $restricted = implode('-', $vars['restricted']);
+        if (!empty($vars['spiers'])) {
+            $spiers = implode('-', $vars['spiers']);
         }
         if (!empty($vars['enforced'])) {
             $enforcelist = implode(':', $vars['enforced']);
@@ -440,14 +449,14 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         if ($vars['pinset'] == '') {
             $vars['pinset'] = 0;
         }
-        $sql = "REPLACE INTO advcallspy_details(
-            spycode, `description`, spytype, status, passcode, pinset, recording, cycledtmf,
+        $sql = "INSERT INTO advcallspy_details(
+            spycode, `description`, spytype, directspy, status, passcode, pinset, recording, cycledtmf,
             exitdtmf, modedtmf, bridged, qmode, whisper, barge, listen, sayname,
-            skip, stopspy, exithangup, eventlog, genhint, restricted, enforcelist, spygroups
+            skip, stopspy, exithangup, eventlog, genhint, spiers, enforcelist, spygroups
         ) VALUES (
-            :spycode, :description, :spytype, :status, :passcode, :pinset, :recording, :cycledtmf,
+            :spycode, :description, :spytype, :directspy, :status, :passcode, :pinset, :recording, :cycledtmf,
             :exitdtmf, :modedtmf, :bridged, :qmode, :whisper, :barge, :listen, :sayname,
-            :skip, :stopspy, :exithangup, :eventlog, :genhint, :restricted, :enforcelist, :spygroups
+            :skip, :stopspy, :exithangup, :eventlog, :genhint, :spiers, :enforcelist, :spygroups
         )";
         
         $stmt = $this->Database->prepare($sql);
@@ -455,6 +464,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             ':spycode' => $vars['spycode'],
             ':description' => $vars['description'],
             ':spytype' => $vars['spytype'],
+            ':directspy' => 'no',
             ':status' => $vars['status'],
             ':passcode' => $vars['passcode'],
             ':pinset' => $vars['pinset'],
@@ -473,7 +483,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             ':exithangup' => $vars['exithangup'],
             ':eventlog' => $vars['eventlog'],
             ':genhint' => $vars['genhint'],
-            ':restricted' => $restricted,
+            ':spiers' => $spiers,
             ':enforcelist' => $enforcelist,
             ':spygroups' => $spygroups
         ]);
@@ -500,7 +510,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $spiers = '';
         $enforcelist = '';
         $spygroups = '';
-        if (!empty($vars['restricted'])) {
+        if (!empty($vars['spiers'])) {
             $spiers = implode('-', $vars['spiers']);
         }
         if (!empty($vars['enforced'])) {
@@ -534,7 +544,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             exithangup = :exithangup, 
             eventlog = :eventlog, 
             genhint = :genhint, 
-            restricted = :restricted, 
+            spiers = :spiers, 
             enforcelist = :enforcelist, 
             spygroups = :spygroups WHERE spycode_id = :spycode_id";
         
@@ -561,7 +571,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             ':exithangup' => $vars['exithangup'],
             ':eventlog' => $vars['eventlog'],
             ':genhint' => $vars['genhint'],
-            ':restricted' => $spiers,
+            ':spiers' => $spiers,
             ':enforcelist' => $enforcelist,
             ':spygroups' => $spygroups,
             ':spycode_id' => $vars['spycode_id']
@@ -571,7 +581,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         if($stmt->errorInfo()) {
             //throw new \Exception("Query error: " . json_encode($stmt->errorInfo()));
         }
-        if($stmt->rowCount() > 0) {
+        if($stmt->rowCount() > 0 && ($vars['status'] != $vars['cacheStatus'] || $vars['spycode'] != $vars['cacheSpycode'])) {
             needreload();
         }
         
@@ -587,14 +597,14 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
      */
     public function setSpygroup($vars)
     {
-        $sql = "REPLACE INTO advcallspy_groups(spygroup, `description`) 
-                VALUES (:spygroup, :description)";
+        $sql = "REPLACE INTO advcallspy_groups(spygroup, `description`) VALUES (:spygroup, :description)";
         $stmt = $this->Database->prepare($sql);
         $stmt->execute([
             ':spygroup' => $vars['spygroup'],
             ':description' => $vars['description']
         ]);
         $this->setGroupExtens($vars['spygroup'], $vars['targets'] ?? []);
+        needreload();
     }
     /**
      * Set Group Extens
@@ -641,13 +651,10 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $groupslist = $this->listGroups();
         $extengrps = $this->listExtenGroups($exten);
         $groups_list = [];
-        
         foreach ($groupslist as $result) {
            $groups_list[] = ['value' => $result[0], 'text' => $result[0] . ' (' . $result[1] . ')'];
         }
-       
         return [$groups_list, $extengrps];
-        
     }
     /**
      * Delete Spy Code

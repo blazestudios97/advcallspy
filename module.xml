@@ -2,11 +2,12 @@
 <module>
   <rawname>advcallspy</rawname>
   <name>Advanced Call Spy</name>
-  <version>17.0.1.3</version>
+  <version>17.0.1.4</version>
   <publisher>Applied Messaging, Inc.</publisher>
   <license>GPLv3+</license>
   <licenselink>https://www.gnu.org/licenses/gpl-3.0.txt</licenselink>
   <changelog>
+    *17.0.1.4* Some quick small fixes
     *17.0.1.3* Bug Fixes and Updates
     *17.0.1.2* Alpha Testing
     *17.0.1.1* Initial release
@@ -44,7 +45,7 @@
         <field name="exitivr" type="string" length="1" notnull="false"/>
         <field name="eventlog" type="integer" notnull="false"/>
         <field name="genhint" type="integer" notnull="false"/>
-        <field name="restricted" type="string" length="1024" notnull="false"/>
+        <field name="spiers" type="string" length="1024" notnull="false"/>
         <field name="enforcelist" type="string" length="255" notnull="false"/>
         <field name="spygroups" type="string" length="255" notnull="false"/>
         <key name="spycode" type="unique">
@@ -69,4 +70,7 @@
     </table>
   </database>
   <supported>17.0</supported>
+  <depends>
+	    <module>pinsets ge 17.0.0</module>
+  </depends>
 </module>

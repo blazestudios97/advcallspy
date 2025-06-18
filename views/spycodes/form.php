@@ -7,7 +7,7 @@ if(isset($_REQUEST['extdisplay']) && !empty($_REQUEST['extdisplay'])) {
     $action = 'edit';
     $spyid = $_REQUEST['extdisplay'];
     $enforcelist = explode(':', $spy['enforcelist']) ?? [];
-    $spiers =  explode('-', $spy['restricted']) ?? [];
+    $spiers =  explode('-', $spy['spiers']) ?? [];
     $spygroups = explode(':', $spy['spygroups']) ?? [];
     $spycode_id = $spy['spycode_id'];
     $delURL = "?display=advcallspy&action=delete&extdisplay=". $_REQUEST['extdisplay'];
@@ -109,6 +109,8 @@ HTML;
                             <input type="hidden" name="form_action" value="<?php echo (isset($spycode_id) ? 'edit' : 'add') ?>">
                             <?php if(isset($spycode_id)) { ?> 
                                 <input type="hidden" name="spycode_id" value="<?= $spycode_id ?>">
+                                <input type="hidden" name="cacheStatus" value="<?= $status ?>">
+                                <input type="hidden" name="cacheSpycode" value="<?= $spycode ?>">
                             <?php } ?>
                         
                             
@@ -371,7 +373,7 @@ HTML;
 										            <option value=""><?= _('None') ?></option>';
 		<?php 
         if (is_array($pinsets)) {
-            $pinset = 0;
+            
 			foreach($pinsets as $item) {
 				$selected = $pinset == $item['pinsets_id'] ? 'selected' : '';
 				echo "<option value={$item['pinsets_id']} ".$selected.">{$item['description']}</option>";

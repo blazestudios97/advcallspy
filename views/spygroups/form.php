@@ -12,10 +12,10 @@ if(isset($_REQUEST['extdisplay']) && !empty($_REQUEST['extdisplay'])) {
     $spy = \FreePBX::Advcallspy()->getSpygroup($_REQUEST['extdisplay']);
     $title .= "Edit: " . $_REQUEST['extdisplay'];
     $action = 'edit';
-    $spyid = $_REQUEST['extdisplay'];
+    $spygroupid = $_REQUEST['extdisplay'];
 } else {
     $title .= 'Add';
-    $spyid = null;
+    $spygroupid = null;
 }
 $spygroup = $spy['spygroup'] ?? '';
 $description = $spy['description'] ?? '';
@@ -41,7 +41,11 @@ $digits[] = '#';
                         <form autocomplete="off" name="edit" id="edit" action="?display=spygroups" method="post" class="fpbx-submit" data-fpbx-delete="<?php echo $delURL ?? '';?>">
                             <input type="hidden" name="display" value="spygroups">
                             <input type="hidden" name="spygroup_form" value="true">
-                            <input type="hidden" name="form_action" value="<?= (isset($spyid) ? 'edit' : 'add') ?>">
+                            <input type="hidden" name="form_action" value="<?= (isset($spygroupid) ? 'edit' : 'add') ?>">
+                            <?php if(isset($spygroupid)) { ?> 
+                                <input type="hidden" name="spygroup" value="<?= $spygroup ?>">
+                            <?php } 
+                         if(!isset($spygroupid)) { ?>
                             <div class="element-container">
                                 <div class="row">
                                     <div class="col-md-12">
@@ -62,12 +66,14 @@ $digits[] = '#';
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <div class="row">
                                     <div class="col-md-12">
                                         <span id="spygroup-help" class="help-block fpbx-help-block">Name of the Spy Group. Name should only contain letters, numbers, dashes (-) or underscores (_)</span>
                                     </div>
                                 </div>      
                             </div>
+                            <?php }  ?>
                             <div class="element-container">
                                 <div class="row">
                                     <div class="col-md-12">
