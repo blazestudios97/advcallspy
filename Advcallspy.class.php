@@ -740,8 +740,8 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             $ext->add($context, $spycode, '', new \ext_set('SPYCODE','${EXTEN}'));
             $ext->add($context, $spycode, '', new \ext_set('SPIER','${AMPUSER}'));
             
-            if ($scode['restricted'] != '') {
-                $ext->add($context, $spycode, '', new \ext_set('SPIERS', $scode['restricted']));
+            if ($scode['spiers'] != '') {
+                $ext->add($context, $spycode, '', new \ext_set('SPIERS', $scode['spiers']));
                 $ext->add($context, $spycode, '', new \ext_set('SCOUNT', '${FIELDQTY(SPIERS,-)}'));
                 $ext->add($context, $spycode, 'spiers', new \ext_while('$[${SCOUNT} > 0]'));
                 $ext->add($context, $spycode, '', new \ext_set('SPYMEM','${CUT(SPIERS,-,${SCOUNT})}'));
@@ -750,7 +750,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
                 $ext->add($context, $spycode, '', new \ext_endwhile());
             }
             
-            if ($scode['passcode'] != '' && $scode['pinset'] == '') {
+            if ($scode['passcode'] != '' && $scode['pinset'] == 0) {
                 $ext->add($context, $spycode, 'doauth', new \ext_authenticate($scode['passcode']));
             }
             if ($scode['pinset'] > 0) {
