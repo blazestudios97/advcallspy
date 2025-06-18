@@ -9,6 +9,7 @@ if(isset($_REQUEST['extdisplay']) && !empty($_REQUEST['extdisplay'])) {
     $enforcelist = explode(':', $spy['enforcelist']) ?? [];
     $spiers =  explode('-', $spy['restricted']) ?? [];
     $spygroups = explode(':', $spy['spygroups']) ?? [];
+    $spycode_id = $spy['spycode_id'];
     $delURL = "?display=advcallspy&action=delete&extdisplay=". $_REQUEST['extdisplay'];
 
 } else {
@@ -19,6 +20,7 @@ if(isset($_REQUEST['extdisplay']) && !empty($_REQUEST['extdisplay'])) {
 }
 $userslist = FreePBX::Core()->listUsers();
 $groupslist = FreePBX::Advcallspy()->listGroups();
+$pinsets = FreePBX::Pinsets()->listPinsets();
 $qsagentlist = '';
 $spier_list = '';
 $groups_list = '';
@@ -50,6 +52,7 @@ $listen = $spy['listen'] ?? '';
 $skip = $spy['skip'] ?? '';
 $sayname = $spy['sayname'] ?? '';
 $passcode = $spy['passcode'] ?? '';
+$pinset = $spy['pinset'] ?? 0;
 $eventlog = $spy['eventlog'] ?? 0;
 $genhint = $spy['genhint'] ?? 0;
 $description = $spy['description'] ?? '';
@@ -59,12 +62,12 @@ $stopspy = $spy['stopspy'] ?? '';
 $exithangup = $spy['exithangup'] ?? '';
 
 for ($i=0; $i<=9; $i++ ) {
-	$digits[]="$i";
+	$digits[] = "$i";
 }
 $digits[] = '*';
 $digits[] = '#';
 // cycle dtmf select options
-$cycleopts = '<option value=""'.($cycledtmf == '' ? ' SELECTED' : '').'>'._("Disable")."</option>";
+$cycleopts = '<option value=""' . ($cycledtmf == '' ? ' SELECTED' : '') . '>' . _("Disable") . "</option>";
 foreach ($digits as $digit) {
 	$cycleopts .= '<option value="'.$digit.'"'.($digit == $cycledtmf ? ' SELECTED' : '').'>'.$digit."</option>\n";
 }
@@ -101,14 +104,14 @@ HTML;
 			<div class="col-sm-12">
 				<div class="fpbx-container">
 					<div class="display full-border">
-                        <form autocomplete="off" name="edit" id="edit" action="" method="post" class="fpbx-submit" data-fpbx-delete="<?php echo $delURL ?? '';?>">
+                        <form autocomplete="off" name="edit" id="edit" action="?display=advcallspy" method="post" class="fpbx-submit" data-fpbx-delete="<?php echo $delURL ?? '';?>">
                             <input type="hidden" name="display" value="advcallspy">
-                            <input type="hidden" name="form_action" value="<?php echo (isset($spyid) ? 'edit' : 'add') ?>">
-                            <?php if(isset($action)) { ?> 
-                            <input type="hidden" name="spycode" value="<?= $spycode ?>">
+                            <input type="hidden" name="form_action" value="<?php echo (isset($spycode_id) ? 'edit' : 'add') ?>">
+                            <?php if(isset($spycode_id)) { ?> 
+                                <input type="hidden" name="spycode_id" value="<?= $spycode_id ?>">
                             <?php } ?>
                         
-                            <?php if(!isset($spyid)) { ?> 
+                            
                             <div class="element-container">
                                 <div class="row">
                                     <div class="col-md-12">
@@ -135,7 +138,7 @@ HTML;
                                     </div>
                                 </div>
                             </div>
-                            <?php } ?>
+                            
                             <div class="element-container">
                                 <div class="row">
                                     <div class="col-md-12">
@@ -338,10 +341,10 @@ HTML;
                                         <div class="row">
                                             <div class="form-group">
                                                 <div class="col-md-3 control-label">
-                                                    <label for="auth">Authenticate</label>
+                                                    <label for="auth">Authenticate PIN</label>
                                                     <i class="fa fa-question-circle fpbx-help-icon" data-for="passcode"></i>
                                                 </div>
-                                                <div class="col-md-9"><input type="text" name="passcode" class="form-control " id="passcode" size="35"   tabindex=""  value=""></div>
+                                                <div class="col-md-9"><input type="number" name="passcode" class="form-control confidential" id="passcode" min="0" tabindex=""  value="<?= $passcode ?>"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -349,7 +352,7 @@ HTML;
                                 <div class="row">
                                     <div class="col-md-12">
                                     <span id="passcode-help" class="help-block fpbx-help-block general-find">
-                                        <?= _("Set an authentication PIN that must be entered to allow this spy code to be used.") ?>
+                                        <?= _("Set an authentication PIN that must be entered to allow this spy code to be used. Authenticate PIN and PIN Set cannot be used together. PIN Set will always take priority over the Authentication PIN if both are set.") ?>
                                     </span>
                                     </div>
                                 </div>
@@ -360,8 +363,45 @@ HTML;
                                         <div class="row">
                                             <div class="form-group">
                                                 <div class="col-md-3 control-label">
-                                                    <label for="auth">Allowed Spiers</label>
-                                                    <i class="fa fa-question-circle fpbx-help-icon" data-for="restricted"></i>
+                                                    <label for="auth">PIN Set</label>
+                                                    <i class="fa fa-question-circle fpbx-help-icon" data-for="pinset"></i>
+                                                </div>
+                                                <div class="col-md-9">
+                                                <select name="pinset" class="form-control">
+										            <option value=""><?= _('None') ?></option>';
+		<?php 
+        if (is_array($pinsets)) {
+            $pinset = 0;
+			foreach($pinsets as $item) {
+				$selected = $pinset == $item['pinsets_id'] ? 'selected' : '';
+				echo "<option value={$item['pinsets_id']} ".$selected.">{$item['description']}</option>";
+			}
+		}
+
+		?>
+        			</select>
+                                                    
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12">
+                                    <span id="pinset-help" class="help-block fpbx-help-block general-find">
+                                        <?= _("Set a PIN Set for authentication to allow this spy code being used. Authenticate PIN and PIN Set cannot be used together. PIN Set will always take priority over the Authentication PIN if both are set.") ?>
+                                    </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="element-container">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="row">
+                                            <div class="form-group">
+                                                <div class="col-md-3 control-label">
+                                                    <label for="spiers">Allowed Spiers</label>
+                                                    <i class="fa fa-question-circle fpbx-help-icon" data-for="spiers"></i>
                                                 </div>
                                                 <div class="col-md-9">
                                                 <select name = "spiers[]" id="spiers" class="multiple" multiple="multiple" style="width:50%">
@@ -375,7 +415,7 @@ HTML;
                                 </div>
                                 <div class="row">
                                     <div class="col-md-12">
-                                        <span id="restricted-help" class="help-block fpbx-help-block general-find"><?= _("Select the extensions that will be allowed to spy on calls using this spy code. If no extensions are selected, anyone can use this spy code.") ?> </span>
+                                        <span id="spiers-help" class="help-block fpbx-help-block general-find"><?= _("Select the extensions that will be allowed to spy on calls using this spy code. If no extensions are selected, anyone can use this spy code.") ?> </span>
                                     </div>
                                 </div>
                             </div>
@@ -612,9 +652,9 @@ HTML;
                                                     </div>
                                                     <div class="col-md-9">
                                                         <span class="radioset">
-                                                            <input type="radio" name="stopspy" id="stopspyyes" value="S" <?php echo (!isset($skip) || $skip == 'S' ? "CHECKED" : ""); ?>>
+                                                            <input type="radio" name="stopspy" id="stopspyyes" value="S" <?php echo (!isset($stopspy) || $stopspy == 'S' ? "CHECKED" : ""); ?>>
                                                             <label for="stopspyyes"><?php echo _("Yes"); ?></label>
-                                                            <input type="radio" name="stopspy" id="stopspyno" value="" <?php echo ($skip == '' ? "CHECKED" : ""); ?>>
+                                                            <input type="radio" name="stopspy" id="stopspyno" value="" <?php echo ($stopspy == '' ? "CHECKED" : ""); ?>>
                                                             <label for="stopspyno"><?php echo _("No"); ?></label>
                                                             
                                                         </span>
@@ -715,8 +755,6 @@ HTML;
 </div>
 
 <script>
-   
-    
 $( function() {
     $('#enforced, .multiple').multiselect({
 		enableFiltering: true,
