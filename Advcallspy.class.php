@@ -80,17 +80,20 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
 	//process form
 	public function doConfigPageInit($page) {
         if ($page == 'extensions' || $_REQUEST['display'] == 'extensions')  {
-            echo 'extensions';
             if(isset($_POST['spygroup'])) {
-                print_r($_POST['spygroup']);
+               // print_r($_POST['spygroup']);
             } 
         }
         if($_REQUEST['display'] == 'advcallspy') {
             if(isset($_REQUEST['form_action'])) {
-                $this->setSpycode($_POST);
+                if($_REQUEST['form_action']== 'add') {
+                    $this->setSpycode($_POST);
+                }
+                if($_REQUEST['form_action'] == 'edit') {
+                    $this->editSpycode($_POST);
+                }
             }
             if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
-                echo 'delete';
                 $this->delSpycode($_REQUEST['extdisplay']);
             }
         }
@@ -99,7 +102,6 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
                 $this->setSpygroup($_POST);
             }
             if(isset($_REQUEST['action']) && $_REQUEST['action'] == 'delete') {
-                echo 'delete';
                 $this->delSpygroup($_REQUEST['extdisplay']);
             }
         }
@@ -207,14 +209,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
        // $action = !empty($_REQUEST['action']) ? $_REQUEST['action'] : "";
         
 		return;
-        switch($action) {
-            case 'form': 
-                return load_view(__DIR__.'/views/form.php',$vars);
-                break;
-            default:
-                return load_view(__DIR__.'/views/grid.php',$vars);
-        }
-		
+        
 	}
 	public function ajaxRequest($req, &$setting) {
 		switch ($req) {
@@ -272,7 +267,6 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
     public function listAll()
     {
 		$sql = "SELECT * FROM advcallspy_details";
-        
 		$stmt = $this->FreePBX->Database->prepare($sql);
 		$stmt->execute();
 		$codes = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -295,7 +289,8 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
      * 
      * @return array $all_groups an multidimensional array of of spy groups
      */
-    public function listAllGroups(){
+    public function listAllGroups()
+    {
 		$sql = "SELECT * FROM advcallspy_groups";
 		$stmt = $this->FreePBX->Database->prepare($sql);
 		$stmt->execute();
@@ -304,14 +299,15 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $all_groups = [];
         if(!empty($groups)) {
             foreach($groups as $grp) {
-                $new['spygroup'] = $code['spygroup'];
-                $new['description'] = $code['description'];
+                $new['spygroup'] = $grp['spygroup'];
+                $new['description'] = $grp['description'];
                 $all_groups[] = $grp;
             }
         }
         return $all_groups;
 	}
-    public function listGroups(){
+    public function listGroups()
+    {
 		$sql = "SELECT * FROM advcallspy_groups";
 		$stmt = $this->FreePBX->Database->prepare($sql);
 		$stmt->execute();
@@ -429,23 +425,27 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
      */
     public function setSpycode($vars)
     {
-        
-        
         $restricted = '';
         $enforcelist = '';
         $spygroups = '';
+        if (!empty($vars['restricted'])) {
+            $restricted = implode('-', $vars['restricted']);
+        }
         if (!empty($vars['enforced'])) {
             $enforcelist = implode(':', $vars['enforced']);
         }
         if (!empty($vars['spygroups'])) {
             $spygroups = implode(':', $vars['spygroups']);
         }
+        if ($vars['pinset'] == '') {
+            $vars['pinset'] = 0;
+        }
         $sql = "REPLACE INTO advcallspy_details(
-            spycode, `description`, spytype, status, passcode, recording, cycledtmf,
+            spycode, `description`, spytype, status, passcode, pinset, recording, cycledtmf,
             exitdtmf, modedtmf, bridged, qmode, whisper, barge, listen, sayname,
             skip, stopspy, exithangup, eventlog, genhint, restricted, enforcelist, spygroups
         ) VALUES (
-            :spycode, :description, :spytype, :status, :passcode, :recording, :cycledtmf,
+            :spycode, :description, :spytype, :status, :passcode, :pinset, :recording, :cycledtmf,
             :exitdtmf, :modedtmf, :bridged, :qmode, :whisper, :barge, :listen, :sayname,
             :skip, :stopspy, :exithangup, :eventlog, :genhint, :restricted, :enforcelist, :spygroups
         )";
@@ -457,6 +457,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             ':spytype' => $vars['spytype'],
             ':status' => $vars['status'],
             ':passcode' => $vars['passcode'],
+            ':pinset' => $vars['pinset'],
             ':recording' => 'no',
             ':cycledtmf' => $vars['cycledtmf'],
             ':exitdtmf' => $vars['exitdtmf'],
@@ -481,9 +482,100 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         if($stmt->errorInfo()) {
             //throw new \Exception("Query error: " . json_encode($stmt->errorInfo()));
         }
-        needreload();
+        if($vars['status'] == 'enabled') {
+            needreload();
+        }
         
         $response = $this->FreePBX->astman->send_request('Command',['Command'=>"devstate change Custom:SPYCODE".$vars['spycode']." NOT_INUSE"]);
+    }
+     /**
+     * Set Spy Code 
+     * adds the spy code to the database. If the spy code already exists, replace it.
+     * if this is a new spy code, add a CustomDevstate for it in AstDB.
+     * 
+     * @param array $vars array of data for the spy code
+     */
+    public function editSpycode($vars)
+    {
+        $spiers = '';
+        $enforcelist = '';
+        $spygroups = '';
+        if (!empty($vars['restricted'])) {
+            $spiers = implode('-', $vars['spiers']);
+        }
+        if (!empty($vars['enforced'])) {
+            $enforcelist = implode(':', $vars['enforced']);
+        }
+        if (!empty($vars['spygroups'])) {
+            $spygroups = implode(':', $vars['spygroups']);
+        }
+        if ($vars['pinset'] == '') {
+            $vars['pinset'] = 0;
+        }
+        $sql = "UPDATE advcallspy_details SET 
+            spycode = :spycode,
+            `description` = :description,
+            spytype = :spytype, 
+            status = :status, 
+            passcode = :passcode, 
+            pinset = :pinset, 
+            recording = :recording, 
+            cycledtmf = :cycledtmf,
+            exitdtmf = :exitdtmf, 
+            modedtmf = :modedtmf, 
+            bridged = :bridged, 
+            qmode = :qmode, 
+            whisper = :whisper, 
+            barge = :barge, 
+            listen = :listen, 
+            sayname = :sayname,
+            skip = :skip, 
+            stopspy = :stopspy, 
+            exithangup = :exithangup, 
+            eventlog = :eventlog, 
+            genhint = :genhint, 
+            restricted = :restricted, 
+            enforcelist = :enforcelist, 
+            spygroups = :spygroups WHERE spycode_id = :spycode_id";
+        
+        $stmt = $this->Database->prepare($sql);
+        $stmt->execute([
+            ':spycode' => $vars['spycode'],
+            ':description' => $vars['description'],
+            ':spytype' => $vars['spytype'],
+            ':status' => $vars['status'],
+            ':passcode' => $vars['passcode'],
+            ':pinset' => $vars['pinset'],
+            ':recording' => 'no',
+            ':cycledtmf' => $vars['cycledtmf'],
+            ':exitdtmf' => $vars['exitdtmf'],
+            ':modedtmf' => $vars['modedtmf'],
+            ':bridged' => $vars['bridged'],
+            ':qmode' => $vars['qmode'],
+            ':whisper' => $vars['whisper'],
+            ':barge' => $vars['barge'],
+            ':listen' => $vars['listen'],
+            ':sayname' => $vars['sayname'],
+            ':skip' => $vars['skip'],
+            ':stopspy' => $vars['stopspy'],
+            ':exithangup' => $vars['exithangup'],
+            ':eventlog' => $vars['eventlog'],
+            ':genhint' => $vars['genhint'],
+            ':restricted' => $spiers,
+            ':enforcelist' => $enforcelist,
+            ':spygroups' => $spygroups,
+            ':spycode_id' => $vars['spycode_id']
+        ]);
+        
+        
+        if($stmt->errorInfo()) {
+            //throw new \Exception("Query error: " . json_encode($stmt->errorInfo()));
+        }
+        if($stmt->rowCount() > 0) {
+            needreload();
+        }
+        
+        
     }
     /**
      * Set Spy Group
@@ -548,8 +640,8 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
     {
         $groupslist = $this->listGroups();
         $extengrps = $this->listExtenGroups($exten);
-        //$groups_list = [];
-        $extens_list = [];
+        $groups_list = [];
+        
         foreach ($groupslist as $result) {
            $groups_list[] = ['value' => $result[0], 'text' => $result[0] . ' (' . $result[1] . ')'];
         }
@@ -569,6 +661,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         if($stmt->errorInfo()) {
             //throw new \Exception("Query error: " . json_encode($stmt->errorInfo()));
         }
+        needreload();
     }
     /**
      * Delete Spy Group
@@ -585,6 +678,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $sql = "DELETE FROM advcallspy_group_extens WHERE spygroup='" . $spygroup . "'";
         $stmt = $this->Database->prepare($sql);
         $stmt->execute();
+        needreload();
     }
 	
     public function getRightNav($request) {
@@ -621,38 +715,40 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             $opts = '';
             $spycode = $scode['spycode'];
             $opts .= $scode['bridged'] === 1 ? 'b' : '';
-            $opts .= !empty($scode['modedtmf']) ?  $scode['modedtmf'] : '';
-            $opts .= !empty($scode['barge']) ?  $scode['barge'] : '';
-            $opts .= !empty($scode['listen']) ?  $scode['listen'] : '';
-            $opts .= !empty($scode['whisper']) ?  $scode['whisper'] : '';
-            $opts .= !empty($scode['skip']) ?  $scode['skip'] : '';
+            $opts .= !empty($scode['modedtmf']) ? $scode['modedtmf'] : '';
+            $opts .= !empty($scode['barge']) ? $scode['barge'] : '';
+            $opts .= !empty($scode['listen']) ? $scode['listen'] : '';
+            $opts .= !empty($scode['whisper']) ? $scode['whisper'] : '';
+            $opts .= !empty($scode['skip']) ? $scode['skip'] : '';
             $opts .= $scode['exithangup'];
             $opts .= $scode['stopspy'];
-            $opts .= $scode['sayname'] != '' ?  'n' : '';
-            $opts .= $scode['cycledtmf'] != '' ?  'c(' . $scode['cycledtmf'] . ')' : '';
-            $opts .= $scode['exitdtmf'] != '' ?  'x(' . $scode['exitdtmf'] . ')' : '';
-            $opts .= $scode['enforcelist'] != '' ?  'e(' . $scode['enforcelist'] . ')' : '';
-            $opts .= $scode['spygroups'] != '' ?  'g(' . $scode['spygroups'] . ')' : '';
+            $opts .= $scode['sayname'] != '' ? 'n' : '';
+            $opts .= $scode['cycledtmf'] != '' ? 'c(' . $scode['cycledtmf'] . ')' : '';
+            $opts .= $scode['exitdtmf'] != '' ? 'x(' . $scode['exitdtmf'] . ')' : '';
+            $opts .= $scode['enforcelist'] != '' ? 'e(' . $scode['enforcelist'] . ')' : '';
+            $opts .= $scode['spygroups'] != '' ? 'g(' . $scode['spygroups'] . ')' : '';
 
             $ext->add($context, $spycode, '', new \ext_noop('Advanced Call Spy for ${EXTEN}'));
             $ext->add($context, $spycode, '', new \ext_gosub(1, 's', 'macro-user-callerid'));
             $ext->add($context, $spycode, '', new \ext_set('SPYCODE','${EXTEN}'));
             $ext->add($context, $spycode, '', new \ext_set('SPIER','${AMPUSER}'));
+            
             if ($scode['restricted'] != '') {
                 $ext->add($context, $spycode, '', new \ext_set('SPIERS', $scode['restricted']));
                 $ext->add($context, $spycode, '', new \ext_set('SCOUNT', '${FIELDQTY(SPIERS,-)}'));
                 $ext->add($context, $spycode, 'spiers', new \ext_while('$[${SCOUNT} > 0]'));
                 $ext->add($context, $spycode, '', new \ext_set('SPYMEM','${CUT(SPIERS,-,${SCOUNT})}'));
-                $ext->add($context, $spycode, '', new \ext_gotoif('$["${AMPUSER}"="${SPYMEM}"]', ($scode['passcode'] !='' ? 'doauth' : 'dospy')));
+                $ext->add($context, $spycode, '', new \ext_gotoif('$["${AMPUSER}"="${SPYMEM}"]', ($scode['passcode'] !='' || $scode['pinset'] > 0 ? 'doauth' : 'dospy')));
                 $ext->add($context, $spycode, '', new \ext_set('SCOUNT','$[${SCOUNT} - 1]'));
                 $ext->add($context, $spycode, '', new \ext_endwhile());
             }
             
-            
-            if ($scode['passcode'] != '') {
+            if ($scode['passcode'] != '' && $scode['pinset'] == '') {
                 $ext->add($context, $spycode, 'doauth', new \ext_authenticate($scode['passcode']));
             }
-           
+            if ($scode['pinset'] > 0) {
+                $ext->add($context, $spycode, 'doauth', new \ext_gosub(1, 's', 'macro-pinsets', $scode['pinset'] . ',0'));
+            }
             if($scode['genhint']) {
                 $ext->add($context, $spycode, '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE'.$spycode.')','INUSE'));
             }
@@ -660,6 +756,10 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             if ($scode['eventlog']) {
                 $ext->add($context, $spycode, '', new \ext_set('SPYSTART', '${STRFTIME(${EPOCH},,%Y-%m-%d %H:%M:%S)}'));
                 $ext->add($context, $spycode, '', new \extension('CELGenUserEvent(SPY_START,spier=${SPIER},spycode=${SPYCODE},time=${SPYSTART})'));
+            }
+            if ($scode['genhint'] || $scode['eventlog']) {
+                $ext->add($context, $spycode, '', new \extension('Set(CHANNEL(hangup_handler_push)=app-callspy,exit,1())'));
+                
             }
             $ext->add($context, $spycode, 'dospy', new \ext_answer());
             if($scode['spytype'] == 'ChanSpy') {

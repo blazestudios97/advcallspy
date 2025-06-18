@@ -2,10 +2,12 @@
 <module>
   <rawname>advcallspy</rawname>
   <name>Advanced Call Spy</name>
-  <version>17.0.1.2</version>
+  <version>17.0.1.3</version>
   <publisher>Applied Messaging, Inc.</publisher>
   <license>GPLv3+</license>
+  <licenselink>https://www.gnu.org/licenses/gpl-3.0.txt</licenselink>
   <changelog>
+    *17.0.1.3* Bug Fixes and Updates
     *17.0.1.2* Alpha Testing
     *17.0.1.1* Initial release
   </changelog>
@@ -18,11 +20,14 @@
   </menuitems>
   <database>
     <table name="advcallspy_details">
+        <field name="spycode_id" type="integer" primarykey="true" autoincrement="true"/>
         <field name="spycode" type="string" length="20"/>
         <field name="description" type="string" length="35" notnull="false"/>
         <field name="spytype" type="string" length="10" notnull="false"/>
-        <field name="status" type="string" length="10" default="disabled" notnull="false"/>
+        <field name="status" type="string" length="10" default="disabled" notnull="true"/>
+        <field name="directspy" type="string" length="5" default="no" notnull="true"/>
         <field name="passcode" type="string" length="40" notnull="false"/>
+        <field name="pinset" type="integer" length="3" default="0" notnull="true"/>
         <field name="recording" type="string" length="5" notnull="false"/>
         <field name="cycledtmf" type="string" length="1" notnull="false"/>
         <field name="exitdtmf" type="string" length="1" notnull="false"/>
