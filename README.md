@@ -21,5 +21,5 @@ This module allows for more advanced control over the ChanSpy and ExtenSpy featu
 
 ### Installation
 
-* `fwconsole ma downloadinstall https://github.com/blazestudios97/advcallspy/releases/download/17.0.1.4/advcallspy-17.0.1.4.tar.gz`
+* `fwconsole ma downloadinstall https://github.com/blazestudios97/advcallspy/releases/download/v17.0.1.4/advcallspy-17.0.1.4.tar.gz`
 * `fwconsole r`
