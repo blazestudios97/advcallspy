@@ -217,6 +217,34 @@ HTML;
                                     </div>
                                 </div>
                             </div>
+                            <div class="element-container">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="row">
+                                                <div class="form-group">
+                                                    <div class="col-md-3 control-label">
+                                                        <label for="directspy">Direct Spying</label>
+                                                        <i class="fa fa-question-circle fpbx-help-icon" data-for="directspy"></i>
+                                                    </div>
+                                                    <div class="col-md-9">
+                                                        <span class="radioset">
+                                                            <input type="radio" name="directspy" id="directspyyes" value="yes" <?php echo ($spy['directspy'] == 'yes' ? "CHECKED" : ""); ?>>
+                                                            <label for="directspyyes"><?php echo _("Yes"); ?></label>
+                                                            <input type="radio" name="directspy" id="directspyno" value="no" <?php echo ($spy['directspy'] == 'no' ? "CHECKED" : ""); ?>>
+                                                            <label for="directspyno"><?php echo _("No"); ?></label>
+                                                            
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <span id="directspy-help" class="help-block fpbx-help-block"><?php echo _("Allow Direct Spy on Extensions by dialing Spycode+Extension (i.e. 555100). Target lists will still be enforced."); ?></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             <!-- Barge Mode -->
                             <div class="element-container">
                                 <div class="row">

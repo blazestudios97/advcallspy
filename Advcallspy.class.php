@@ -1,4 +1,11 @@
 <?php
+/**
+ * Advanced Call Spy Module
+ * 
+ * @author      Applied Messaging Inc / Blaze Studios
+ * @copyright   2025 Applied Messaging Inc / Blaze Studios
+ * @license     GNU Affero General Public License v3.0 (AGPL-3.0)
+ */
 namespace FreePBX\modules;
 use FreePBX\Module\Base;
 use PDO;
@@ -527,6 +534,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             `description` = :description,
             spytype = :spytype, 
             status = :status, 
+            directspy = :directspy,
             passcode = :passcode, 
             pinset = :pinset, 
             recording = :recording, 
@@ -554,6 +562,7 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             ':description' => $vars['description'],
             ':spytype' => $vars['spytype'],
             ':status' => $vars['status'],
+            ':directspy' => $vars['directspy'],
             ':passcode' => $vars['passcode'],
             ':pinset' => $vars['pinset'],
             ':recording' => 'no',
@@ -582,6 +591,9 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             //throw new \Exception("Query error: " . json_encode($stmt->errorInfo()));
         }
         if($stmt->rowCount() > 0 && ($vars['status'] != $vars['cacheStatus'] || $vars['spycode'] != $vars['cacheSpycode'])) {
+            needreload();
+        }
+        if($stmt->rowCount() > 0) {
             needreload();
         }
         
@@ -719,8 +731,16 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
         $ext->addInclude('from-internal-additional', 'app-callspy');
         
         foreach ($codes as $scode) {
+            $targetList = [];
+            if ($scode['enforcelist'] != '') {
+                $targetList = explode(":", $scode['enforcelist']);
+            }
             $opts = '';
             $spycode = $scode['spycode'];
+            if($scode['directspy'] == 'yes') {
+                $spyall = '_'.$scode['spycode'] . 'X!';
+                $spyLen = strlen($scode['spycode']);
+            }
             $opts .= $scode['bridged'] === 1 ? 'b' : '';
             $opts .= !empty($scode['modedtmf']) ? $scode['modedtmf'] : '';
             $opts .= !empty($scode['barge']) ? $scode['barge'] : '';
@@ -735,11 +755,18 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
             $opts .= $scode['enforcelist'] != '' ? 'e(' . $scode['enforcelist'] . ')' : '';
             $opts .= $scode['spygroups'] != '' ? 'g(' . $scode['spygroups'] . ')' : '';
 
+
             $ext->add($context, $spycode, '', new \ext_noop('Advanced Call Spy for ${EXTEN}'));
             $ext->add($context, $spycode, '', new \ext_gosub(1, 's', 'macro-user-callerid'));
             $ext->add($context, $spycode, '', new \ext_set('SPYCODE','${EXTEN}'));
             $ext->add($context, $spycode, '', new \ext_set('SPIER','${AMPUSER}'));
-            
+
+            if($scode['directspy'] == 'yes') {
+                $ext->add($context, $spyall, '', new \ext_noop('Advanced Call Spy for ${EXTEN}'));
+                $ext->add($context, $spyall, '', new \ext_gosub(1, 's', 'macro-user-callerid'));
+                $ext->add($context, $spyall, '', new \ext_set('SPYCODE','${EXTEN}'));
+                $ext->add($context, $spyall, '', new \ext_set('SPIER','${AMPUSER}'));
+            }
             if ($scode['spiers'] != '') {
                 $ext->add($context, $spycode, '', new \ext_set('SPIERS', $scode['spiers']));
                 $ext->add($context, $spycode, '', new \ext_set('SCOUNT', '${FIELDQTY(SPIERS,-)}'));
@@ -748,48 +775,97 @@ class Advcallspy extends \FreePBX_Helpers implements \BMO {
                 $ext->add($context, $spycode, '', new \ext_gotoif('$["${AMPUSER}"="${SPYMEM}"]', ($scode['passcode'] !='' || $scode['pinset'] > 0 ? 'doauth' : 'dospy')));
                 $ext->add($context, $spycode, '', new \ext_set('SCOUNT','$[${SCOUNT} - 1]'));
                 $ext->add($context, $spycode, '', new \ext_endwhile());
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \ext_set('SPIERS', $scode['spiers']));
+                    $ext->add($context, $spyall, '', new \ext_set('SCOUNT', '${FIELDQTY(SPIERS,-)}'));
+                    $ext->add($context, $spyall, 'spiers', new \ext_while('$[${SCOUNT} > 0]'));
+                    $ext->add($context, $spyall, '', new \ext_set('SPYMEM','${CUT(SPIERS,-,${SCOUNT})}'));
+                    $ext->add($context, $spyall, '', new \ext_gotoif('$["${AMPUSER}"="${SPYMEM}"]', ($scode['passcode'] !='' || $scode['pinset'] > 0 ? 'doauth' : 'dospy')));
+                    $ext->add($context, $spyall, '', new \ext_set('SCOUNT','$[${SCOUNT} - 1]'));
+                    $ext->add($context, $spyall, '', new \ext_endwhile());
+                }
             }
             
             if ($scode['passcode'] != '' && $scode['pinset'] == 0) {
                 $ext->add($context, $spycode, 'doauth', new \ext_authenticate($scode['passcode']));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, 'doauth', new \ext_authenticate($scode['passcode']));
+                }
             }
             if ($scode['pinset'] > 0) {
                 $ext->add($context, $spycode, 'doauth', new \ext_gosub(1, 's', 'macro-pinsets', $scode['pinset'] . ',0'));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, 'doauth', new \ext_gosub(1, 's', 'macro-pinsets', $scode['pinset'] . ',0'));
+                }
             }
             if($scode['genhint']) {
-                $ext->add($context, $spycode, '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE'.$spycode.')','INUSE'));
+                $ext->add($context, $spycode, '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE'.$spycode.')', 'INUSE'));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE'.$spycode.'X!)', 'INUSE'));
+                }
             }
             
             if ($scode['eventlog']) {
                 $ext->add($context, $spycode, '', new \ext_set('SPYSTART', '${STRFTIME(${EPOCH},,%Y-%m-%d %H:%M:%S)}'));
                 $ext->add($context, $spycode, '', new \extension('CELGenUserEvent(SPY_START,spier=${SPIER},spycode=${SPYCODE},time=${SPYSTART})'));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \ext_set('SPYSTART', '${STRFTIME(${EPOCH},,%Y-%m-%d %H:%M:%S)}'));
+                    $ext->add($context, $spyall, '', new \extension('CELGenUserEvent(SPY_START,spier=${SPIER},spycode=${SPYCODE},time=${SPYSTART})'));
+                }
             }
             if ($scode['genhint'] || $scode['eventlog']) {
                 $ext->add($context, $spycode, '', new \extension('Set(CHANNEL(hangup_handler_push)=app-callspy,exit,1())'));
-                
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \extension('Set(CHANNEL(hangup_handler_push)=app-callspy,exit,1())'));
+                }
             }
+
             $ext->add($context, $spycode, 'dospy', new \ext_answer());
+            if($scode['directspy'] == 'yes') {
+                $ext->add($context, $spyall, 'dospy', new \ext_answer());
+            }
+
             if($scode['spytype'] == 'ChanSpy') {
                 $ext->add($context, $spycode, '', new \ext_chanspy('PJSIP/', $opts));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \ext_chanspy('PJSIP/${EXTEN:'. $spyLen . '}', $opts));
+                }
             } else {
                 $ext->add($context, $spycode, '', new \extension('ExtenSpy(,'.$opts.')'));
+                if($scode['directspy'] == 'yes') {
+                    $ext->add($context, $spyall, '', new \extension('ExtenSpy(${EXTEN:'. $spyLen . '},'.$opts.')'));
+                }
             }
             $ext->add($context, $spycode, '', new \ext_noop('Advanced Call Spy Normal Exiting'));
             $ext->add($context, $spycode, '', new \ext_hangup());
+            if($scode['directspy'] == 'yes') {
+                $ext->add($context, $spyall, '', new \ext_noop('Advanced Call Spy Normal Exiting'));
+                $ext->add($context, $spyall, '', new \ext_hangup());
+            }
             // generate hint for this spy code
             if($scode['genhint']) {
                 $ext->addHint($context, $spycode, 'Custom:SPYCODE'.$spycode);
+                if($scode['directspy'] == 'yes') {
+                    $ext->addHint($context, $spyall, 'Custom:SPYCODE'.$spycode. '${EXTEN}');
+                }
             }
         }
         $ext->add($context, 'exit', '', new \ext_noop('Exiting Call Spy ${SPYCODE} ${SPIER}'));
+        
 		if ($scode['eventlog']) {
             $ext->add($context, 'exit', '', new \ext_set('SPYEND', '${STRFTIME(${EPOCH},,%Y-%m-%d %H:%M:%S)}'));
             $ext->add($context, 'exit', '', new \extension('CELGenUserEvent(SPY_EXIT,spier=${SPIER},spycode=${SPYCODE},time=${SPYEND})'));
+            if($scode['directspy'] == 'yes') {}
         }
         if($scode['genhint']) {
-            $ext->add($context, 'exit', '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE${SPYCODE})','NOT_INUSE'));
+            $ext->add($context, 'exit', '', new \ext_set('DEVICE_STATE(CUSTOM:SPYCODE${SPYCODE})', 'NOT_INUSE'));
+            if($scode['directspy'] == 'yes') {
+               
+            }
         }
         $ext->add($context, 'exit', '', new \ext_return());
+        if($scode['directspy'] == 'yes') {}
+
         $extspygroups = $this->listAllExtenGroups();
         foreach($extspygroups as $idx => $spytargets) {
             foreach($spytargets as $target => $spygroups) {
