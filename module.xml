@@ -2,11 +2,12 @@
 <module>
   <rawname>advcallspy</rawname>
   <name>Advanced Call Spy</name>
-  <version>17.0.1.4</version>
+  <version>17.0.1.5</version>
   <publisher>Applied Messaging, Inc.</publisher>
   <license>GPLv3+</license>
   <licenselink>https://www.gnu.org/licenses/gpl-3.0.txt</licenselink>
   <changelog>
+    *17.0.1.5* Added Direct Spying
     *17.0.1.4* Some quick small fixes
     *17.0.1.3* Bug Fixes and Updates
     *17.0.1.2* Alpha Testing
